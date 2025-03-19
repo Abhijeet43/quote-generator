@@ -7,6 +7,7 @@ const elements = {
   wrapper: document.querySelector("#quote-wrapper"),
   card: document.querySelector("#quote-card"),
   newQuoteBtn: document.querySelector("#new-quote"),
+  copyQuoteBtn: document.querySelector("#copy-quote"),
   tweetQuoteBtn: document.querySelector("#tweet-quote"),
   downloadQuoteBtn: document.querySelector("#download-quote"),
   fetchIcon: document.querySelector("#fetch_icon"),
@@ -49,6 +50,30 @@ function toggleLoadingAnimation(isLoading) {
  */
 function showError(message) {
   console.error(message);
+}
+
+/**
+ * Copy quote to Clipboard
+ */
+async function copyQuote(message) {
+  if (!navigator.clipboard) {
+    showError("Clipboard API not available");
+    return;
+  }
+  try {
+    elements.copyQuoteBtn.setAttribute("disabled", "disabled");
+    await navigator.clipboard.writeText(message);
+  } catch (error) {
+    showError(
+      `There was error copying the text: ${text} to clipboard, ${error}`
+    );
+  } finally {
+    elements.copyQuoteBtn.removeAttribute("disabled");
+  }
+}
+
+function handleCopyQuote() {
+  copyQuote(`${elements.quote.textContent} ${elements.author.textContent}`);
 }
 
 /**
@@ -169,6 +194,7 @@ function shareOnTwitter() {
  */
 function init() {
   elements.newQuoteBtn.addEventListener("click", updateQuote);
+  elements.copyQuoteBtn.addEventListener("click", handleCopyQuote);
   elements.tweetQuoteBtn.addEventListener("click", shareOnTwitter);
   elements.downloadQuoteBtn.addEventListener("click", downloadQuote);
 
