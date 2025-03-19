@@ -12,11 +12,11 @@ A simple web application that generates inspirational quotes, lets you share the
 
 ### Web-Page:
 
-![WebPage View](./screen-shots/web-shot.png)
+![WebPage View](./screen-shots/web.png)
 
 ### Mobile-Page:
 
-![Mobile View](./screen-shots/web-mobile.png)
+![Mobile View](./screen-shots/mobile.png)
 
 ## Deployment Link:
 
@@ -26,6 +26,7 @@ You can access the live version of the app here:
 ## Technologies Used:
 
 - HTML, CSS, and JavaScript for the front-end
-- Fetch API to retrieve quotes
-- Twitter API for sharing quotes
-- Canvas API for generating downloadable images
+- Fetch API to retrieve quotes.
+- Navigator API to copy quotes.
+- Twitter API for sharing quotes.
+- HTML-TO-IMAGE Package for generating downloadable images.
