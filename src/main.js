@@ -1,4 +1,4 @@
-import { toPng } from "html-to-image";
+import { toJpeg } from "html-to-image";
 
 // DOM Elements
 const elements = {
@@ -18,35 +18,30 @@ const config = {
   apiEndpoint: "https://api.freeapi.app/api/v1/public/quotes/quote/random",
   downloadOptions: {
     quality: 0.95,
-    backgroundColor: "#ffffff",
   },
-  gradients: [
-    "bg-gradient-to-r from-blue-500 to-purple-500",
-    "bg-gradient-to-r from-green-400 to-teal-500",
-    "bg-gradient-to-r from-orange-400 to-red-500",
-    "bg-gradient-to-r from-indigo-500 to-cyan-500",
-    "bg-gradient-to-r from-gray-700 to-black",
-    "bg-gradient-to-r from-pink-500 to-rose-500",
-    "bg-gradient-to-r from-fuchsia-500 to-violet-500",
-    "bg-gradient-to-r from-lime-400 to-emerald-500",
-    "bg-gradient-to-r from-yellow-400 to-orange-500",
-    "bg-gradient-to-r from-teal-400 to-blue-500",
-  ],
 };
 
 /**
- * Toggle loading animation
+ * Toggle loading animation and disable/enable buttons
  */
 function toggleLoadingAnimation(isLoading) {
+  elements.fetchIcon.classList.toggle("animate-spin", isLoading);
+  const buttons = [
+    elements.newQuoteBtn,
+    elements.copyQuoteBtn,
+    elements.tweetQuoteBtn,
+    elements.downloadQuoteBtn,
+  ];
+  buttons.forEach((btn) => btn?.toggleAttribute("disabled", isLoading));
+
   if (isLoading) {
-    elements.fetchIcon.classList.add("animate-spin");
-  } else {
-    elements.fetchIcon.classList.remove("animate-spin");
+    elements.quote.textContent = "Loading...";
+    elements.author.textContent = "";
   }
 }
 
 /**
- * Display an error message
+ * Log and display an error message
  */
 function showError(message) {
   console.error(message);
@@ -55,25 +50,21 @@ function showError(message) {
 /**
  * Copy quote to Clipboard
  */
-async function copyQuote(message) {
+async function copyQuote() {
   if (!navigator.clipboard) {
     showError("Clipboard API not available");
     return;
   }
+
   try {
+    const text = `${elements.quote.textContent} ${elements.author.textContent}`;
     elements.copyQuoteBtn.setAttribute("disabled", "disabled");
-    await navigator.clipboard.writeText(message);
+    await navigator.clipboard.writeText(text);
   } catch (error) {
-    showError(
-      `There was error copying the text: ${text} to clipboard, ${error}`
-    );
+    showError(`Error copying text: ${error}`);
   } finally {
     elements.copyQuoteBtn.removeAttribute("disabled");
   }
-}
-
-function handleCopyQuote() {
-  copyQuote(`${elements.quote.textContent} ${elements.author.textContent}`);
 }
 
 /**
@@ -81,79 +72,66 @@ function handleCopyQuote() {
  */
 async function fetchQuote() {
   try {
-    elements.newQuoteBtn.setAttribute("disabled", "disabled");
-    toggleLoadingAnimation(true);
-
     const response = await fetch(config.apiEndpoint);
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
 
     const data = await response.json();
-
     return data?.data || null;
   } catch (error) {
-    console.error("Failed to fetch quote:", error);
-    showError("Couldn't fetch a new quote. Please try again later.");
+    showError(`Failed to fetch quote: ${error}`);
     return null;
+  }
+}
+
+/**
+ * Fetch a random background image
+ */
+async function fetchBackground() {
+  try {
+    const response = await fetch("https://picsum.photos/800/500");
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    return response.url;
+  } catch (error) {
+    showError(`Failed to fetch background: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Fetch both quote and background in parallel
+ */
+async function fetchData() {
+  toggleLoadingAnimation(true);
+  try {
+    const [quote, background] = await Promise.all([
+      fetchQuote(),
+      fetchBackground(),
+    ]);
+    return { quote, background };
+  } catch (error) {
+    showError(`Error fetching data: ${error}`);
+    return { quote: null, background: null };
   } finally {
-    elements.newQuoteBtn.removeAttribute("disabled");
     toggleLoadingAnimation(false);
   }
 }
 
 /**
- * Get a random gradient from the available options
- */
-function getRandomGradient() {
-  const randomIndex = Math.floor(Math.random() * config.gradients.length);
-  return config.gradients[randomIndex];
-}
-
-/**
- * Update background gradients on the UI
- */
-function updateBackgrounds() {
-  const randomGradient = getRandomGradient();
-  const gradientClasses = randomGradient.split(" ");
-
-  // Helper function to remove existing gradient classes
-  function removeGradientClasses(element) {
-    if (!element) return;
-
-    element.classList.forEach((cls) => {
-      if (
-        cls.startsWith("bg-gradient-to") ||
-        cls.startsWith("from-") ||
-        cls.startsWith("to-")
-      ) {
-        element.classList.remove(cls);
-      }
-    });
-  }
-
-  // Apply new gradient to wrapper
-  removeGradientClasses(elements.wrapper);
-  elements.wrapper.classList.add(...gradientClasses);
-
-  // Apply new gradient to button
-  removeGradientClasses(elements.newQuoteBtn);
-  elements.newQuoteBtn.classList.add(...gradientClasses);
-}
-
-/**
- * Update the quote and author on the UI
+ * Update the UI with a new quote and background
  */
 async function updateQuote() {
-  const quoteData = await fetchQuote();
+  const { quote, background } = await fetchData();
 
-  if (quoteData) {
-    elements.quote.textContent = quoteData.content || "No quote available";
-    elements.author.textContent = quoteData.author
-      ? `― ${quoteData.author}`
+  if (quote) {
+    elements.quote.textContent = quote.content || "No quote available";
+    elements.author.textContent = quote.author
+      ? `― ${quote.author}`
       : "― Unknown";
-    updateBackgrounds();
+  }
+
+  if (background) {
+    elements.wrapper.style.backgroundImage = `url(${background})`;
   }
 }
 
@@ -162,16 +140,15 @@ async function updateQuote() {
  */
 async function downloadQuote() {
   try {
-    const dataUrl = await toPng(elements.card, config.downloadOptions);
+    const dataUrl = await toJpeg(elements.wrapper, config.downloadOptions);
 
     const link = document.createElement("a");
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    link.download = `inspirational-quote-${timestamp}.png`;
+    link.download = `inspirational-quote-${timestamp}.jpg`;
     link.href = dataUrl;
     link.click();
-  } catch (err) {
-    console.error("Error generating image:", err);
-    showError("Could not download the quote. Please try again.");
+  } catch (error) {
+    showError(`Error generating image: ${error}`);
   }
 }
 
@@ -179,27 +156,47 @@ async function downloadQuote() {
  * Share the current quote on Twitter
  */
 function shareOnTwitter() {
-  const quoteText = elements.quote.textContent;
-  const authorText = elements.author.textContent;
+  const text = `"${elements.quote.textContent}" ${elements.author.textContent}`;
+  window.open(
+    `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
 
-  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-    `"${quoteText}" ${authorText}`
-  )}`;
+/**
+ * Attach event listeners efficiently
+ */
+function attachEventListeners() {
+  const events = [
+    { element: "newQuoteBtn", handler: updateQuote },
+    { element: "copyQuoteBtn", handler: copyQuote },
+    { element: "tweetQuoteBtn", handler: shareOnTwitter },
+    { element: "downloadQuoteBtn", handler: downloadQuote },
+  ];
 
-  window.open(twitterUrl, "_blank", "noopener,noreferrer");
+  events.forEach(({ element, handler }) => {
+    elements[element]?.addEventListener("click", debounce(handler, 300));
+  });
+}
+
+/**
+ * Debounce function to prevent multiple rapid clicks
+ */
+function debounce(fn, delay) {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
 }
 
 /**
  * Initialize the application
  */
 function init() {
-  elements.newQuoteBtn.addEventListener("click", updateQuote);
-  elements.copyQuoteBtn.addEventListener("click", handleCopyQuote);
-  elements.tweetQuoteBtn.addEventListener("click", shareOnTwitter);
-  elements.downloadQuoteBtn.addEventListener("click", downloadQuote);
-
+  attachEventListeners();
   updateQuote();
 }
 
-// Initialize the application when the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", init);
