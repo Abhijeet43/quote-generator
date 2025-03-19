@@ -6,6 +6,7 @@ const elements = {
   author: document.querySelector("#author"),
   wrapper: document.querySelector("#quote-wrapper"),
   card: document.querySelector("#quote-card"),
+  cardBackground: document.querySelector("#background-image-container"),
   newQuoteBtn: document.querySelector("#new-quote"),
   copyQuoteBtn: document.querySelector("#copy-quote"),
   tweetQuoteBtn: document.querySelector("#tweet-quote"),
@@ -131,7 +132,7 @@ async function updateQuote() {
   }
 
   if (background) {
-    elements.wrapper.style.backgroundImage = `url(${background})`;
+    elements.cardBackground.style.backgroundImage = `url(${background})`;
   }
 }
 
@@ -139,9 +140,8 @@ async function updateQuote() {
  * Download the quote card as an image
  */
 async function downloadQuote() {
+  const dataUrl = await toJpeg(elements.card, config.downloadOptions);
   try {
-    const dataUrl = await toJpeg(elements.wrapper, config.downloadOptions);
-
     const link = document.createElement("a");
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     link.download = `inspirational-quote-${timestamp}.jpg`;
