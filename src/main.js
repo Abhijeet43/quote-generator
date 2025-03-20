@@ -36,7 +36,7 @@ function toggleLoadingAnimation(isLoading) {
   buttons.forEach((btn) => btn?.toggleAttribute("disabled", isLoading));
 
   if (isLoading) {
-    elements.quote.textContent = "Loading...";
+    elements.quote.textContent = "Loading Quote...";
     elements.author.textContent = "";
   }
 }
