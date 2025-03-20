@@ -61,6 +61,7 @@ async function copyQuote() {
     const text = `${elements.quote.textContent} ${elements.author.textContent}`;
     elements.copyQuoteBtn.setAttribute("disabled", "disabled");
     await navigator.clipboard.writeText(text);
+    alert("Quote Copied Successfully!!!");
   } catch (error) {
     showError(`Error copying text: ${error}`);
   } finally {
